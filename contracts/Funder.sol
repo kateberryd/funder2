@@ -16,6 +16,8 @@ contract FunderMarket is ERC721URIStorage {
 
     mapping(uint256 => Project) private projects;
 
+    mapping(address => bool) public blacklist;
+
     struct Project {
         uint256 tokenId;
         address payable seller;
@@ -37,8 +39,16 @@ contract FunderMarket is ERC721URIStorage {
         owner = payable(msg.sender);
     }
 
-    function updateListingPrice(uint _listingPrice) public payable {
-        require(owner == msg.sender, "Only marketplace owner can update listing price.");
+    modifier onlyOwner {
+        require(msg.sender == owner, "Only marketplace owner can call this function");
+        _;
+    }
+
+    modifier notBlacklisted {
+        require(!blacklist[msg.sender], "You are blacklisted from this marketplace");
+        _;
+    }
+    function updateListingPrice(uint _listingPrice) public payable  onlyOwner {
         listingPrice = _listingPrice;
     }
 
@@ -54,7 +64,7 @@ contract FunderMarket is ERC721URIStorage {
         return listingPrice;
     }
 
-    function createProject(string memory tokenURI, uint256 price) public payable returns (uint) {
+    function createProject(string memory tokenURI, uint256 price) notBlacklisted public payable returns (uint) {
         tokenId.increment();
         uint256 newTokenId = tokenId.current();
 
@@ -88,7 +98,7 @@ contract FunderMarket is ERC721URIStorage {
         );
     }
 
-    function pushProjectToMarketPlace(uint256 _tokenId) public payable {
+    function pushProjectToMarketPlace(uint256 _tokenId) notBlacklisted public payable {
         require(projects[_tokenId].owner == msg.sender, "Only item owner can perform this operation");
         require(msg.value == listingPrice, "Price must be equal to listing price");
 
@@ -99,13 +109,13 @@ contract FunderMarket is ERC721URIStorage {
         projects[_tokenId].owner = owner;
         projects[_tokenId].resale = true;
 
-        
+
     }
 
 
     function fundProject(
         uint256 _tokenId
-    ) public payable {
+    )  public notBlacklisted payable {
         uint price = projects[_tokenId].price;
         address seller = projects[_tokenId].seller;
         require(msg.value >= price, "Please submit the asking price in order to complete the purchase");
@@ -113,8 +123,8 @@ contract FunderMarket is ERC721URIStorage {
         projects[_tokenId].owner = payable(msg.sender);
         projects[_tokenId].sold = true;
         projects[_tokenId].seller = payable(address(0));
-        
-        
+
+
         if(projects[_tokenId].resale){
             payable(owner).transfer(listingPrice);
         }
@@ -128,5 +138,27 @@ contract FunderMarket is ERC721URIStorage {
     function getProjectsLength() public view returns (uint256) {
         return tokenId.current();
     }
+
+    function revokeOwnership(address _address) public  onlyOwner{
+
+        owner = payable(_address);
+    }
+
+    function blacklistAddress(address _address) public onlyOwner{
+        require(_address != owner, "Cannot blacklist yourself");
+        require(_address != address(0), "Cannot blacklist the zero address");
+        blacklist[_address] = true;
+    }
+
+    function unBlacklistAddress(address _address) public onlyOwner{
+        blacklist[_address] = false;
+    }
+
+    function batchBlacklist(address[] _addresses) public onlyOwner{
+        for(uint i = 0; i < _addresses.length; i++){
+            blacklistAddress(_addresses[i]);
+        }
+    }
+
 
 }
