@@ -13,6 +13,7 @@ contract FunderMarket is ERC721URIStorage {
 
     uint256 listingPrice = 1 ether;
     address payable owner;
+    address internal admin;
 
     mapping(uint256 => Project) private projects;
 
@@ -35,6 +36,7 @@ contract FunderMarket is ERC721URIStorage {
 
     constructor() ERC721("Animals On Trial Fund", "AOTF") {
         owner = payable(msg.sender);
+        admin = msg.sender;
     }
 
     function updateListingPrice(uint _listingPrice) public payable {
@@ -52,6 +54,10 @@ contract FunderMarket is ERC721URIStorage {
 
     function getListingPrice() public view returns (uint256) {
         return listingPrice;
+    }
+
+    function getAdmin()public view returns (address){
+        return admin;
     }
 
     function createProject(string memory tokenURI, uint256 price) public payable returns (uint) {
